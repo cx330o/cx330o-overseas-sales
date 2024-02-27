@@ -1,0 +1,31 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Cold Email Automation API"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.13",
+    "uvicorn[standard]>=0.34.3",
+    "pydantic>=2.0.0",
+    "langchain>=0.3.25",
+    "langchain-community>=0.3.25",
+    "langchain-groq>=0.3.2",
+    "crewai>=0.130.0",
+    "chromadb>=1.0.13",
+    "pandas>=2.3.0",
+    "python-dotenv>=1.1.0",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.13.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
