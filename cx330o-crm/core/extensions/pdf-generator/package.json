@@ -1,0 +1,13 @@
+{
+  "name": "crm-pdf-generator",
+  "version": "1.0.0",
+  "description": "cx330o PDF invoice/quote generator for CRM",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "pdfkit": "^0.14.0"
+  }
+}
