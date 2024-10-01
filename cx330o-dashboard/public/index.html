@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cx330o Sales Platform</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/cx330o-theme.css">
+<meta name="theme-color" content="#0a0a0f">
+</head>
+<body>
+
+<!-- Toolbar: Language + Theme -->
+<div class="cx-toolbar">
+  <div class="cx-lang-switcher">
+    <button class="cx-lang-btn active" onclick="setLang('zh')">中文</button>
+    <button class="cx-lang-btn" onclick="setLang('en')">EN</button>
+    <button class="cx-lang-btn" onclick="setLang('ja')">日本語</button>
+  </div>
+  <span class="cx-theme-label" id="themeLabel">🌙</span>
+  <button class="cx-theme-toggle" id="themeToggle" onclick="toggleTheme()"></button>
+</div>
+
+<div class="cx-header">
+  <h1>cx330o Sales Platform</h1>
+  <p data-i18n="subtitle"></p>
+  <div class="cx-status-bar" id="statusBar">
+    <div class="cx-status-dot"><span class="cx-dot cx-dot-checking"></span> <span data-i18n="checking"></span></div>
+  </div>
+</div>
+
+<div class="cx-container">
+
+  <div class="cx-section-title" data-i18n="flow_title"></div>
+  <div class="cx-flow-bar" id="flowBar"></div>
+
+  <div class="cx-section-title" data-i18n="core_modules"></div>
+  <div class="cx-grid cx-grid-dense" id="coreGrid"></div>
+
+  <div class="cx-section-title"><span data-i18n="deal_closing"></span> <span class="cx-section-badge">NEW</span></div>
+  <div class="cx-grid" id="dealGrid"></div>
+
+  <div class="cx-section-title"><span data-i18n="growth_exp"></span> <span class="cx-section-badge">NEW</span></div>
+  <div class="cx-grid" id="growthGrid"></div>
+
+  <div class="cx-section-title"><span data-i18n="realtime_comm"></span> <span class="cx-section-badge">NEW</span></div>
+  <div class="cx-grid" id="commGrid"></div>
+
+  <div class="cx-section-title"><span data-i18n="compliance"></span> <span class="cx-section-badge">NEW</span></div>
+  <div class="cx-grid" id="complianceGrid"></div>
+
+</div>
+
+<div class="cx-footer" data-i18n="footer"></div>
+
+<!-- Klaro.js GDPR Consent Manager -->
+<link rel="stylesheet" href="https://cdn.kiprotect.com/klaro/v0.7/klaro.min.css">
+<script>
+var klaroConfig = {
+  privacyPolicy: '/privacy-policy', lang: 'zh',
+  translations: { zh: { consentModal: { title: '隐私设置', description: '我们使用 Cookie 和类似技术来提升您的体验。' }, purposes: { analytics: '数据分析', marketing: '营销追踪', functional: '功能性' }, ok: '全部接受', decline: '仅必要', acceptSelected: '接受选中' } },
+  services: [
+    { name: 'analytics', title: 'cx330o Analytics', purposes: ['analytics'], default: true },
+    { name: 'growthbook', title: 'A/B Testing', purposes: ['analytics'], default: true },
+    { name: 'marketing', title: 'Marketing', purposes: ['marketing'], default: false },
+    { name: 'chat', title: 'Live Chat', purposes: ['functional'], required: true },
+  ],
+};
+</script>
+<script defer src="https://cdn.kiprotect.com/klaro/v0.7/klaro.min.js"></script>
+
+<script>
+// ===== i18n Data =====
+const I18N = {
+  zh: {
+    subtitle: '海外销售全栈自动化系统',
+    checking: '检测服务状态...',
+    status_fail: '状态检测失败',
+    flow_title: '数据流',
+    core_modules: '核心模块',
+    deal_closing: '成交闭环',
+    growth_exp: '增长实验',
+    realtime_comm: '实时沟通',
+    compliance: '合规与国际化',
+    footer: 'cx330o Sales Platform v2.0 — 海外销售全栈自动化系统',
+    flow: ['线索获取','AI 外联','合同签署','支付收款','客户管理','营销触达','售后支持','数据分析'],
+  },
+  en: {
+    subtitle: 'Full-Stack Overseas Sales Automation',
+    checking: 'Checking service status...',
+    status_fail: 'Status check failed',
+    flow_title: 'DATA FLOW',
+    core_modules: 'CORE MODULES',
+    deal_closing: 'DEAL CLOSING',
+    growth_exp: 'GROWTH & EXPERIMENTS',
+    realtime_comm: 'REAL-TIME COMMUNICATION',
+    compliance: 'COMPLIANCE & i18n',
+    footer: 'cx330o Sales Platform v2.0 — Full-Stack Overseas Sales Automation',
+    flow: ['Lead Gen','AI Outreach','Contract Sign','Payment','CRM','Marketing','Support','Analytics'],
+  },
+  ja: {
+    subtitle: '海外営業フルスタック自動化システム',
+    checking: 'サービス状態を確認中...',
+    status_fail: '状態確認に失敗',
+    flow_title: 'データフロー',
+    core_modules: 'コアモジュール',
+    deal_closing: '成約クロージング',
+    growth_exp: 'グロース実験',
+    realtime_comm: 'リアルタイム通信',
+    compliance: 'コンプライアンス & 国際化',
+    footer: 'cx330o Sales Platform v2.0 — 海外営業フルスタック自動化',
+    flow: ['リード獲得','AI アウトリーチ','契約締結','決済','顧客管理','マーケティング','サポート','分析'],
+  },
+};
+
+const CARDS = {
+  core: [
+    { id:'leadhunter', icon:'🔍', accent:'#3776ab,#ffd43b', action:'detail',
+      zh:{ name:'cx330o LeadHunter', desc:'多源线索获取引擎。商家抓取 + 域名情报 + AI 数据丰富。异步并行，自动去重。', tag:'Python CLI', hint:'python demo_full.py' },
+      en:{ name:'cx330o LeadHunter', desc:'Multi-source lead engine. Business scraping + domain intel + AI enrichment. Async parallel, auto-dedup.', tag:'Python CLI', hint:'python demo_full.py' },
+      ja:{ name:'cx330o LeadHunter', desc:'マルチソースリードエンジン。ビジネススクレイピング + ドメインインテル + AIエンリッチメント。', tag:'Python CLI', hint:'python demo_full.py' },
+    },
+    { id:'outreach', icon:'🤖', accent:'#7b2ff7,#ff6ec7', action:'detail',
+      zh:{ name:'cx330o OutreachAI', desc:'AI 驱动的销售外联管线。自动研究线索、评分筛选、生成个性化冷邮件。多 LLM 支持。', tag:'Python CLI', hint:'python -m outreach_ai' },
+      en:{ name:'cx330o OutreachAI', desc:'AI-powered sales outreach pipeline. Auto research, scoring, personalized cold emails. Multi-LLM support.', tag:'Python CLI', hint:'python -m outreach_ai' },
+      ja:{ name:'cx330o OutreachAI', desc:'AI駆動の営業アウトリーチ。自動リサーチ、スコアリング、パーソナライズドメール生成。', tag:'Python CLI', hint:'python -m outreach_ai' },
+    },
+    { id:'flow', icon:'⚡', accent:'#2496ed,#00d2ff', action:'embed', port:':81',
+      zh:{ name:'cx330o FlowEngine', desc:'可视化工作流编排平台。400+ 集成，串联线索获取→外联→CRM→营销的全自动管线。', tag:'Web UI' },
+      en:{ name:'cx330o FlowEngine', desc:'Visual workflow orchestration. 400+ integrations, connecting lead gen → outreach → CRM → marketing.', tag:'Web UI' },
+      ja:{ name:'cx330o FlowEngine', desc:'ビジュアルワークフロー。400+統合、リード→アウトリーチ→CRM→マーケティングを自動接続。', tag:'Web UI' },
+    },
+    { id:'analytics', icon:'📊', accent:'#2496ed,#00d2ff', action:'embed', port:':82',
+      zh:{ name:'cx330o Analytics', desc:'销售数据看板。追踪线索获取量、邮件打开率、转化漏斗。无代码查询，AI 辅助分析。', tag:'Web UI' },
+      en:{ name:'cx330o Analytics', desc:'Sales dashboards. Track lead volume, email open rates, conversion funnels. No-code queries, AI analysis.', tag:'Web UI' },
+      ja:{ name:'cx330o Analytics', desc:'セールスダッシュボード。リード数、メール開封率、コンバージョンファネルを追跡。', tag:'Web UI' },
+    },
+    { id:'crm', icon:'👥', accent:'#68a063,#00e676', action:'embed', port:':83',
+      zh:{ name:'cx330o CRM', desc:'现代客户关系管理。客户全生命周期管理，可扩展 App 系统。含文档和邮件解析扩展。', tag:'Web UI' },
+      en:{ name:'cx330o CRM', desc:'Modern CRM. Full customer lifecycle management with extensible app system. Includes doc & email parsing.', tag:'Web UI' },
+      ja:{ name:'cx330o CRM', desc:'モダンCRM。顧客ライフサイクル管理、拡張可能なアプリシステム。ドキュメント＆メール解析付き。', tag:'Web UI' },
+    },
+    { id:'docforge', icon:'📄', accent:'#68a063,#00e676', action:'embed', port:':3002',
+      zh:{ name:'cx330o DocForge', desc:'PDF 发票和报价单生成服务。支持多币种、自定义模板、公司 Logo。REST API 调用即出。', tag:'Web UI + API' },
+      en:{ name:'cx330o DocForge', desc:'PDF invoice & quote generator. Multi-currency, custom templates, company branding. REST API ready.', tag:'Web UI + API' },
+      ja:{ name:'cx330o DocForge', desc:'PDF請求書・見積書生成。多通貨、カスタムテンプレート、会社ロゴ対応。REST API対応。', tag:'Web UI + API' },
+    },
+    { id:'mailradar', icon:'📧', accent:'#68a063,#00e676', action:'embed', port:':3003',
+      zh:{ name:'cx330o MailRadar', desc:'邮件解析与追踪服务。自动解析来信，提取联系人信息，同步到 CRM。', tag:'Web UI + API' },
+      en:{ name:'cx330o MailRadar', desc:'Email parsing & tracking. Auto-parse inbound emails, extract contacts, sync to CRM.', tag:'Web UI + API' },
+      ja:{ name:'cx330o MailRadar', desc:'メール解析＆追跡。受信メールを自動解析、連絡先を抽出、CRMに同期。', tag:'Web UI + API' },
+    },
+    { id:'markethub', icon:'📡', accent:'#68a063,#00e676', action:'embed', port:':8080',
+      zh:{ name:'cx330o MarketHub', desc:'统一营销 API 网关。联系人跨平台同步、行为评分引擎、多渠道触达路由。', tag:'Web UI + API' },
+      en:{ name:'cx330o MarketHub', desc:'Unified marketing API gateway. Cross-platform contact sync, behavioral scoring, multi-channel routing.', tag:'Web UI + API' },
+      ja:{ name:'cx330o MarketHub', desc:'統合マーケティングAPI。クロスプラットフォーム連絡先同期、行動スコアリング、マルチチャネル。', tag:'Web UI + API' },
+    },
+  ],
+  deal: [
+    { id:'contracts', icon:'✍️', accent:'#ff6b35,#ffc107', action:'embed', port:':84', isNew:true,
+      zh:{ name:'cx330o Contracts', desc:'电子合同与签名平台。创建、填写、多方签署数字文档。支持模板管理、签署流程追踪、API 集成。', tag:'Web UI + API' },
+      en:{ name:'cx330o Contracts', desc:'E-signature platform. Create, fill, multi-party sign digital docs. Template management, tracking, API.', tag:'Web UI + API' },
+      ja:{ name:'cx330o Contracts', desc:'電子署名プラットフォーム。デジタル文書の作成・記入・複数者署名。テンプレート管理、追跡、API。', tag:'Web UI + API' },
+    },
+    { id:'payments', icon:'💳', accent:'#00c853,#64dd17', action:'embed', port:':85', isNew:true,
+      zh:{ name:'cx330o Payments', desc:'统一支付网关。Stripe / PayPal / Adyen 等 50+ 支付商一键接入。多币种、退款、订阅计费。', tag:'Web UI + API' },
+      en:{ name:'cx330o Payments', desc:'Unified payment gateway. 50+ processors (Stripe/PayPal/Adyen). Multi-currency, refunds, subscriptions.', tag:'Web UI + API' },
+      ja:{ name:'cx330o Payments', desc:'統合決済ゲートウェイ。50+プロセッサ対応。多通貨、返金、サブスクリプション課金。', tag:'Web UI + API' },
+    },
+  ],
+  growth: [
+    { id:'experiments', icon:'🧪', accent:'#9c27b0,#e040fb', action:'embed', port:':86', isNew:true,
+      zh:{ name:'cx330o Experiments', desc:'A/B 测试与 Feature Flag 平台。邮件主题、Landing Page、定价策略实验。数据驱动决策。', tag:'Web UI + SDK' },
+      en:{ name:'cx330o Experiments', desc:'A/B testing & feature flags. Email subjects, landing pages, pricing experiments. Data-driven decisions.', tag:'Web UI + SDK' },
+      ja:{ name:'cx330o Experiments', desc:'A/Bテスト＆フィーチャーフラグ。メール件名、LP、価格戦略の実験。データ駆動の意思決定。', tag:'Web UI + SDK' },
+    },
+    { id:'pagebuilder', icon:'🎨', accent:'#9c27b0,#e040fb', action:'detail', isNew:true,
+      zh:{ name:'cx330o PageBuilder', desc:'拖拽式 Landing Page 构建器。无代码创建营销页面、邮件模板、产品展示页。', tag:'Web UI', hint:'GrapesJS 集成' },
+      en:{ name:'cx330o PageBuilder', desc:'Drag-and-drop landing page builder. No-code marketing pages, email templates, product showcases.', tag:'Web UI', hint:'GrapesJS' },
+      ja:{ name:'cx330o PageBuilder', desc:'ドラッグ＆ドロップLP構築。ノーコードでマーケティングページ、メールテンプレートを作成。', tag:'Web UI', hint:'GrapesJS' },
+    },
+  ],
+  comm: [
+    { id:'voip', icon:'📹', accent:'#0288d1,#26c6da', action:'embed', port:':87', isNew:true,
+      zh:{ name:'cx330o VoIP', desc:'WebRTC 视频会议系统。支持 8K 画质、屏幕共享、录制回放、虚拟背景。浏览器直接使用。', tag:'Web UI' },
+      en:{ name:'cx330o VoIP', desc:'WebRTC video conferencing. 8K quality, screen sharing, recording, virtual backgrounds. Browser-based.', tag:'Web UI' },
+      ja:{ name:'cx330o VoIP', desc:'WebRTCビデオ会議。8K画質、画面共有、録画、仮想背景。ブラウザで直接利用。', tag:'Web UI' },
+    },
+    { id:'voiceagent', icon:'🎙️', accent:'#0288d1,#26c6da', action:'detail', isNew:true,
+      zh:{ name:'cx330o VoiceAgent', desc:'AI 语音销售 Agent。自动拨打电话、智能对话、实时转录。多语言语音合成。', tag:'API', hint:'Bolna 集成' },
+      en:{ name:'cx330o VoiceAgent', desc:'AI voice sales agent. Auto-dial, smart conversation, real-time transcription. Multi-language synthesis.', tag:'API', hint:'Bolna' },
+      ja:{ name:'cx330o VoiceAgent', desc:'AI音声営業エージェント。自動発信、スマート会話、リアルタイム文字起こし。多言語音声合成。', tag:'API', hint:'Bolna' },
+    },
+  ],
+  compliance: [
+    { id:'privacy', icon:'🛡️', accent:'#546e7a,#90a4ae', action:'detail', isNew:true,
+      zh:{ name:'cx330o Privacy', desc:'GDPR / CCPA 合规套件。Cookie 同意管理、数据删除请求处理、隐私政策生成。', tag:'内置', hint:'全平台集成' },
+      en:{ name:'cx330o Privacy', desc:'GDPR/CCPA compliance suite. Cookie consent, data deletion requests, privacy policy generation.', tag:'Built-in', hint:'Platform-wide' },
+      ja:{ name:'cx330o Privacy', desc:'GDPR/CCPAコンプライアンス。Cookie同意管理、データ削除リクエスト、プライバシーポリシー生成。', tag:'内蔵', hint:'プラットフォーム全体' },
+    },
+    { id:'i18n', icon:'🌍', accent:'#546e7a,#90a4ae', action:'detail', isNew:true,
+      zh:{ name:'cx330o i18n', desc:'多语言 + 多币种国际化框架。i18next 驱动，50+ 语言、RTL 布局、货币/日期本地化。', tag:'SDK', hint:'i18next 集成' },
+      en:{ name:'cx330o i18n', desc:'Multi-language + multi-currency i18n framework. i18next powered, 50+ languages, RTL, locale formatting.', tag:'SDK', hint:'i18next' },
+      ja:{ name:'cx330o i18n', desc:'多言語＋多通貨i18nフレームワーク。i18next駆動、50+言語、RTL、ロケールフォーマット。', tag:'SDK', hint:'i18next' },
+    },
+  ],
+};
+
+// ===== State =====
+let currentLang = localStorage.getItem('cx-lang') || 'zh';
+let currentTheme = localStorage.getItem('cx-theme') || 'dark';
+
+// ===== Render =====
+function t(key) { return I18N[currentLang]?.[key] || I18N.zh[key] || key; }
+
+function renderCard(c) {
+  const d = c[currentLang] || c.zh;
+  const tagClass = c.isNew ? 'cx-tag-new' : 'cx-tag';
+  const onclick = c.action === 'embed' ? `openService('${c.id}')` : `openDetail('${c.id}')`;
+  const right = c.port
+    ? `<span class="cx-port">${c.port}</span>`
+    : (d.hint ? `<span class="cx-cli-hint">${d.hint}</span>` : '');
+  return `<div class="cx-card" style="--accent:linear-gradient(90deg,${c.accent});" onclick="${onclick}">
+    <div class="cx-card-icon">${c.icon}</div>
+    <h3>${d.name}</h3>
+    <div class="cx-card-desc">${d.desc}</div>
+    <div class="cx-card-meta"><span class="${tagClass}">${d.tag}</span>${right}</div>
+  </div>`;
+}
+
+function renderFlow() {
+  const steps = t('flow');
+  const nums = ['①','②','③','④','⑤','⑥','⑦','⑧'];
+  document.getElementById('flowBar').innerHTML = steps.map((s, i) =>
+    (i ? '<span class="cx-flow-arrow">→</span>' : '') +
+    `<div class="cx-flow-step"><span>${nums[i]}</span>${s}</div>`
+  ).join('');
+}
+
+function renderAll() {
+  // i18n text nodes
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  // Flow
+  renderFlow();
+  // Grids
+  document.getElementById('coreGrid').innerHTML = CARDS.core.map(renderCard).join('');
+  document.getElementById('dealGrid').innerHTML = CARDS.deal.map(renderCard).join('');
+  document.getElementById('growthGrid').innerHTML = CARDS.growth.map(renderCard).join('');
+  document.getElementById('commGrid').innerHTML = CARDS.comm.map(renderCard).join('');
+  document.getElementById('complianceGrid').innerHTML = CARDS.compliance.map(renderCard).join('');
+  // Lang buttons
+  document.querySelectorAll('.cx-lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.trim() === {zh:'中文',en:'EN',ja:'日本語'}[currentLang]);
+  });
+}
+
+// ===== Language =====
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('cx-lang', lang);
+  document.documentElement.lang = {zh:'zh-CN',en:'en',ja:'ja'}[lang];
+  renderAll();
+}
+
+// ===== Theme =====
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  const toggle = document.getElementById('themeToggle');
+  const label = document.getElementById('themeLabel');
+  if (currentTheme === 'light') {
+    toggle.classList.add('light');
+    label.textContent = '☀️';
+  } else {
+    toggle.classList.remove('light');
+    label.textContent = '🌙';
+  }
+}
+function toggleTheme() {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('cx-theme', currentTheme);
+  applyTheme();
+}
+
+// ===== Navigation =====
+function openService(svc) { window.location.href = '/embed.html?svc=' + svc; }
+function openDetail(svc) { window.location.href = '/detail.html?svc=' + svc; }
+
+// ===== Status =====
+async function checkStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const svcs = await res.json();
+    document.getElementById('statusBar').innerHTML = svcs.map(s =>
+      `<div class="cx-status-dot"><span class="cx-dot cx-dot-${s.status}"></span>${s.name}</div>`
+    ).join('');
+  } catch {
+    document.getElementById('statusBar').innerHTML =
+      `<div class="cx-status-dot"><span class="cx-dot cx-dot-offline"></span>${t('status_fail')}</div>`;
+  }
+}
+
+// ===== Init =====
+applyTheme();
+renderAll();
+checkStatus();
+setInterval(checkStatus, 15000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+</script>
+</body>
+</html>
