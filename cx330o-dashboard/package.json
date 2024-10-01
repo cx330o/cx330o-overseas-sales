@@ -1,0 +1,12 @@
+{
+  "name": "cx330o-sales-dashboard",
+  "version": "2.0.0",
+  "description": "cx330o Sales Platform — 统一入口",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}
