@@ -1,0 +1,18 @@
+
+Copyright and License
+----------------------
+
+This software is distributed under the GNU General Public License
+as published by the Free Software Foundation; either version 3 of
+the License, or (at your option) any later version (GPL-3+).
+
+A copy of this license is available in the COPYING file.
+
+Copyright (c) 2024-present cx330o
+
+License of Third Party Libraries
+---------------------------------
+
+This software depends on third-party components and code snippets
+released under their own license (all compatible with GPL-3+).
+See individual component directories for their respective licenses.
