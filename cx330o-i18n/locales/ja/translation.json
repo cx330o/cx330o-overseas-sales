@@ -1,0 +1,39 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "create": "作成",
+    "search": "検索",
+    "loading": "読み込み中...",
+    "confirm": "確認",
+    "back": "戻る",
+    "next": "次へ",
+    "submit": "送信",
+    "close": "閉じる",
+    "yes": "はい",
+    "no": "いいえ"
+  },
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "leads": "リード管理",
+    "outreach": "AI アウトリーチ",
+    "crm": "顧客管理",
+    "contracts": "契約・署名",
+    "payments": "決済",
+    "marketing": "マーケティング",
+    "analytics": "分析",
+    "experiments": "A/Bテスト",
+    "voip": "ビデオ通話",
+    "settings": "設定"
+  },
+  "auth": {
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "username": "ユーザー名",
+    "password": "パスワード",
+    "loginButton": "ログイン",
+    "loginError": "ユーザー名またはパスワードが正しくありません"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "confirm": "Confirmar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "leads": "Prospectos",
+    "outreach": "Alcance AI",
+    "crm": "CRM",
+    "contracts": "Contratos",
+    "payments": "Pagos",
+    "marketing": "Marketing",
+    "analytics": "Analítica",
+    "experiments": "Experimentos",
+    "voip": "Videollamada",
+    "settings": "Configuración"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "loginButton": "Entrar",
+    "loginError": "Usuario o contraseña incorrectos"
+  }
+}
