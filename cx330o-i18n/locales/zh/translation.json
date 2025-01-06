@@ -1,0 +1,64 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "search": "搜索",
+    "loading": "加载中...",
+    "confirm": "确认",
+    "back": "返回",
+    "next": "下一步",
+    "submit": "提交",
+    "close": "关闭",
+    "yes": "是",
+    "no": "否"
+  },
+  "nav": {
+    "dashboard": "控制台",
+    "leads": "线索管理",
+    "outreach": "AI 外联",
+    "crm": "客户管理",
+    "contracts": "合同签署",
+    "payments": "支付收款",
+    "marketing": "营销触达",
+    "analytics": "数据分析",
+    "experiments": "增长实验",
+    "voip": "视频通话",
+    "settings": "系统设置"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "退出登录",
+    "username": "用户名",
+    "password": "密码",
+    "loginButton": "登录",
+    "loginError": "账号或密码错误"
+  },
+  "leads": {
+    "title": "线索管理",
+    "newLead": "新建线索",
+    "score": "评分",
+    "source": "来源",
+    "status": "状态",
+    "company": "公司",
+    "email": "邮箱"
+  },
+  "contracts": {
+    "title": "合同与签名",
+    "newContract": "新建合同",
+    "template": "模板",
+    "pending": "待签署",
+    "signed": "已签署",
+    "expired": "已过期"
+  },
+  "payments": {
+    "title": "支付管理",
+    "amount": "金额",
+    "currency": "币种",
+    "status": "状态",
+    "refund": "退款",
+    "subscription": "订阅"
+  }
+}
