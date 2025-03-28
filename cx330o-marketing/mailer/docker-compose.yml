@@ -1,0 +1,70 @@
+# All LISTMONK_* env variables also support the LISTMONK_*_FILE pattern for loading secrets from files with Docker secrets and Podman
+# eg: LISTMONK_ADMIN_USER -> LISTMONK_ADMIN_USER_FILE=/path/to/file_with_value
+
+x-db-credentials: &db-credentials                             # Use the default POSTGRES_ credentials if they're available or simply default to "cx330o Mailer"
+  POSTGRES_USER: &db-user cx330o Mailer                            # for database user, password, and database name
+  POSTGRES_PASSWORD: &db-password cx330o Mailer
+  POSTGRES_DB: &db-name cx330o Mailer
+
+services:
+  # cx330o Mailer app
+  app:
+    image: cx330o Mailer/cx330o Mailer:latest
+    container_name: cx330o Mailer_app
+    restart: unless-stopped
+    ports:
+      - "9000:9000"                                           # To change the externally exposed port, change to: $custom_port:9000
+    networks:
+      - cx330o Mailer
+    hostname: cx330o Mailer.example.com                            # Recommend using FQDN for hostname
+    depends_on:
+      - db
+    command: [sh, -c, "./cx330o Mailer --install --idempotent --yes --config '' && ./cx330o Mailer --upgrade --yes --config '' && ./cx330o Mailer --config ''"]
+                                                              # --config (file) param is set to empty so that cx330o Mailer only uses the env vars (below) for config.
+                                                              # --install --idempotent ensures that DB installation happens only once on an empty DB, on the first ever start.
+                                                              # --upgrade automatically runs any DB migrations when a new image is pulled.
+
+    environment:                                              # The same params as in config.toml are passed as env vars here.
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__user: *db-user
+      LISTMONK_db__password: *db-password
+      LISTMONK_db__database: *db-name
+      LISTMONK_db__host: db
+      LISTMONK_db__port: 5432
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_db__max_open: 25
+      LISTMONK_db__max_idle: 25
+      LISTMONK_db__max_lifetime: 300s
+      TZ: Etc/UTC
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-}           # If these (optional) are set during the first `docker compose up`, then the Super Admin user is automatically created.
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:-}   # Otherwise, the user can be setup on the web app after the first visit to http://localhost:9000
+    volumes:
+      - ./uploads:/cx330o Mailer/uploads:rw                        # Mount an uploads directory on the host to /cx330o Mailer/uploads inside the container.
+                                                              # To use this, change directory path in Admin -> Settings -> Media to /cx330o Mailer/uploads
+
+  # Postgres database
+  db:
+    image: postgres:17-alpine
+    container_name: cx330o Mailer_db
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"                                 # Only bind on the local interface. To connect to Postgres externally, change this to 0.0.0.0
+    networks:
+      - cx330o Mailer
+    environment:
+      <<: *db-credentials
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cx330o Mailer"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    volumes:
+      - type: volume
+        source: cx330o Mailer-data
+        target: /var/lib/postgresql/data
+
+networks:
+  cx330o Mailer:
+
+volumes:
+  cx330o Mailer-data:
