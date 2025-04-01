@@ -1,0 +1,579 @@
+# ============================================================
+# cx330o Sales Platform — Unified Docker Compose
+# ============================================================
+#
+# Usage:
+#   docker compose up -d                          # Core services only
+#   docker compose --profile marketing up -d      # Include marketing services
+#   docker compose --profile contracts up -d      # Include e-signature
+#   docker compose --profile payments up -d       # Include payment gateway
+#   docker compose --profile experiments up -d    # Include A/B testing
+#   docker compose --profile support up -d        # Include helpdesk
+#   docker compose --profile voip up -d           # Include video/voice
+#   docker compose --profile all up -d            # Everything
+#
+# Dashboard: http://localhost (admin / abc123)
+#
+# Ports:
+#   :80   → Dashboard (Nginx gateway)
+#   :81   → FlowEngine (workflow)
+#   :82   → Analytics (BI)
+#   :83   → CRM
+#   :84   → DocuSeal (e-signature)
+#   :85   → Hyperswitch Control Center (payments)
+#   :86   → GrowthBook (A/B testing)
+#   :87   → MiroTalk (video calls)
+#   :3002 → PDF Generator API
+#   :3003 → Email Parser API
+#   :8080 → Marketing Gateway API (requires --profile marketing)
+# ============================================================
+
+services:
+
+  # ==================== Gateway (Nginx) ====================
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "81:81"
+      - "82:82"
+      - "83:83"
+      - "84:84"
+      - "85:85"
+      - "86:86"
+      - "87:87"
+    volumes:
+      - ./cx330o-dashboard/nginx.docker.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - dashboard
+    restart: unless-stopped
+
+  # ==================== Dashboard ====================
+  dashboard:
+    build: ./cx330o-dashboard
+    environment:
+      - FLOW_URL=http://flowengine:5678
+      - ANALYTICS_URL=http://analytics:3000
+      - CRM_URL=http://crm:3000
+      - DOCUSEAL_URL=http://docuseal:3000
+      - HYPERSWITCH_URL=http://hyperswitch-control-center:9000
+      - HYPERSWITCH_API_URL=http://hyperswitch-server:8080
+      - GROWTHBOOK_URL=http://growthbook:3000
+      - MIROTALK_URL=http://mirotalk:3000
+    depends_on:
+      infra-db:
+        condition: service_healthy
+      crm-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ==================== FlowEngine ====================
+  flowengine:
+    build: ./cx330o-infra/core/flowengine
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=infra-db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=flowengine
+      - DB_POSTGRESDB_USER=infra
+      - DB_POSTGRESDB_PASSWORD=infra
+    volumes:
+      - flowengine_data:/home/node/.n8n
+      - ./cx330o-infra/core/workflows:/home/node/workflows
+    depends_on:
+      infra-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # FlowEngine auto-setup
+  flowengine-init:
+    image: curlimages/curl:latest
+    depends_on:
+      - flowengine
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for FlowEngine..."
+        for i in $(seq 1 60); do
+          if curl -sf http://flowengine:5678/healthz > /dev/null 2>&1; then
+            echo "FlowEngine healthz OK, waiting for API readiness..."
+            sleep 5
+            echo "Creating admin account..."
+            RESULT=$(curl -s -w "\n%{http_code}" -X POST http://flowengine:5678/rest/owner/setup \
+              -H "Content-Type: application/json" \
+              -d '{"email":"admin@cx330o.com","firstName":"cx330o","lastName":"Admin","password":"abc123"}')
+            CODE=$(echo "$RESULT" | tail -1)
+            if [ "$CODE" = "200" ]; then
+              echo "Owner account created successfully!"
+            else
+              echo "Setup returned HTTP $CODE (owner may already exist, this is OK)"
+            fi
+            exit 0
+          fi
+          sleep 3
+        done
+        echo "FlowEngine did not start in time"
+        exit 1
+
+  # ==================== Analytics ====================
+  analytics:
+    image: metabase/metabase:latest
+    environment:
+      - MB_DB_TYPE=postgres
+      - MB_DB_DBNAME=analytics
+      - MB_DB_PORT=5432
+      - MB_DB_USER=infra
+      - MB_DB_PASS=infra
+      - MB_DB_HOST=infra-db
+    depends_on:
+      infra-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Analytics auto-setup
+  analytics-init:
+    image: curlimages/curl:latest
+    depends_on:
+      - analytics
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for Analytics (Metabase)..."
+        for i in $(seq 1 90); do
+          if curl -sf http://analytics:3000/api/health > /dev/null 2>&1; then
+            echo "Metabase is up, fetching setup token..."
+            sleep 3
+            TOKEN=$(curl -s http://analytics:3000/api/session/properties | grep -o '"setup-token":"[^"]*"' | head -1 | cut -d'"' -f4)
+            if [ -z "$TOKEN" ]; then
+              echo "No setup token found (admin may already exist)"
+              exit 0
+            fi
+            echo "Got setup token, creating admin..."
+            RESULT=$(curl -s -w "\n%{http_code}" -X POST http://analytics:3000/api/setup \
+              -H "Content-Type: application/json" \
+              -d "{\"token\":\"$TOKEN\",\"user\":{\"email\":\"admin@cx330o.com\",\"password\":\"Abc123!!\",\"first_name\":\"cx330o\",\"last_name\":\"Admin\"},\"prefs\":{\"site_name\":\"cx330o Analytics\"}}")
+            CODE=$(echo "$RESULT" | tail -1)
+            if [ "$CODE" = "200" ]; then
+              echo "Metabase admin created successfully!"
+            else
+              echo "Setup returned HTTP $CODE"
+            fi
+            exit 0
+          fi
+          sleep 3
+        done
+        echo "Metabase did not start in time"
+        exit 1
+
+  # ==================== CRM ====================
+  crm:
+    image: twentycrm/twenty:latest
+    environment:
+      - SERVER_URL=http://crm:3000
+      - APP_SECRET=cx330o_sales_platform_secret_key_2026
+      - PG_DATABASE_URL=postgres://crm:crm2026@crm-db:5432/default
+      - REDIS_URL=redis://crm-redis:6379
+      - STORAGE_TYPE=local
+      - STORAGE_LOCAL_PATH=.local-storage
+      - DEFAULT_SUBDOMAIN=cx330o
+      - IS_SIGN_UP_DISABLED=false
+    depends_on:
+      crm-db:
+        condition: service_healthy
+      crm-redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # ==================== PDF Generator ====================
+  pdf-generator:
+    build: ./cx330o-crm/core/extensions/pdf-generator
+    ports:
+      - "3002:3002"
+    restart: unless-stopped
+
+  # ==================== Email Parser ====================
+  email-parser:
+    build: ./cx330o-crm/core/extensions/email-parser
+    ports:
+      - "3003:3003"
+    environment:
+      - CRM_API_URL=http://crm:3000
+    restart: unless-stopped
+
+  # ============================================================
+  # NEW INTEGRATED SERVICES
+  # ============================================================
+
+  # ==================== DocuSeal (E-Signature) ====================
+  # Open source DocuSign alternative — create, fill, sign documents
+  docuseal:
+    image: docuseal/docuseal:latest
+    environment:
+      - DATABASE_URL=postgresql://contracts:contracts@contracts-db:5432/docuseal
+      - SECRET_KEY_BASE=cx330o_docuseal_secret_key_base_2026_production
+    volumes:
+      - docuseal_data:/data/docuseal
+    depends_on:
+      contracts-db:
+        condition: service_healthy
+    profiles:
+      - contracts
+      - all
+    restart: unless-stopped
+
+  contracts-db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=contracts
+      - POSTGRES_PASSWORD=contracts
+      - POSTGRES_DB=docuseal
+    volumes:
+      - contracts_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contracts"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles:
+      - contracts
+      - all
+    restart: unless-stopped
+
+  # ==================== Hyperswitch (Payment Gateway) ====================
+  # Open source payments switch — Stripe/PayPal/Adyen unified API
+  hyperswitch-pg:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=db_user
+      - POSTGRES_PASSWORD=db_pass
+      - POSTGRES_DB=hyperswitch_db
+    volumes:
+      - hyperswitch_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U db_user -d hyperswitch_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles:
+      - payments
+      - all
+    restart: unless-stopped
+
+  hyperswitch-redis:
+    image: redis:7
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      retries: 3
+      timeout: 5s
+    profiles:
+      - payments
+      - all
+    restart: unless-stopped
+
+  hyperswitch-server:
+    image: docker.juspay.io/juspaydotin/hyperswitch-router:standalone
+    command: /local/bin/router -f /local/config/docker_compose.toml
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./others/hyperswitch-main/hyperswitch-main/config:/local/config
+      - ./others/hyperswitch-main/hyperswitch-main/files:/local/bin/files
+    environment:
+      - ROUTER__SERVER__HOST=0.0.0.0
+    depends_on:
+      hyperswitch-pg:
+        condition: service_healthy
+      hyperswitch-redis:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:8080/health || exit 1
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+    profiles:
+      - payments
+      - all
+    restart: unless-stopped
+
+  hyperswitch-control-center:
+    image: docker.juspay.io/juspaydotin/hyperswitch-control-center:latest
+    ports:
+      - "9100:9000"
+    environment:
+      - configPath=/tmp/dashboard-config.toml
+    depends_on:
+      hyperswitch-server:
+        condition: service_healthy
+    profiles:
+      - payments
+      - all
+    restart: unless-stopped
+
+  hyperswitch-web:
+    image: docker.juspay.io/juspaydotin/hyperswitch-web:latest
+    ports:
+      - "9050:9050"
+    environment:
+      - ENABLE_LOGGING=true
+      - SDK_ENV=local
+      - ENV_BACKEND_URL=http://localhost:8180
+    depends_on:
+      hyperswitch-server:
+        condition: service_healthy
+    profiles:
+      - payments
+      - all
+    restart: unless-stopped
+
+  # ==================== GrowthBook (A/B Testing + Feature Flags) ====================
+  growthbook:
+    image: growthbook/growthbook:latest
+    ports:
+      - "3100:3100"
+    environment:
+      - MONGODB_URI=mongodb://root:password@growthbook-mongo:27017/growthbook?authSource=admin
+      - APP_ORIGIN=http://localhost:86
+      - API_HOST=http://localhost:3100
+    volumes:
+      - growthbook_uploads:/usr/local/src/app/packages/back-end/uploads
+    depends_on:
+      - growthbook-mongo
+    profiles:
+      - experiments
+      - all
+    restart: unless-stopped
+
+  growthbook-mongo:
+    image: mongo:7
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - growthbook_mongo_data:/data/db
+    profiles:
+      - experiments
+      - all
+    restart: unless-stopped
+
+  # ==================== MiroTalk SFU (Video Conferencing) ====================
+  mirotalk:
+    image: mirotalk/sfu:latest
+    ports:
+      - "3400:3000"
+    environment:
+      - HOST_PROTECTED=true
+      - HOST_USERNAME=admin
+      - HOST_PASSWORD=abc123
+      - TURN_ENABLED=false
+    volumes:
+      - ./cx330o-voip/mirotalk-config:/src/config
+    profiles:
+      - voip
+      - all
+    restart: unless-stopped
+
+  # ==================== Bolna (AI Voice Agent) ====================
+  bolna-server:
+    build:
+      context: ./others/bolna-master/bolna-master
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+    profiles:
+      - voip
+      - all
+    restart: unless-stopped
+
+  # ==================== Marketing Services (optional) ====================
+  marketing-gateway:
+    build: ./cx330o-marketing/core/gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - JOURNEY_URL=http://journey:3000
+      - MAILER_URL=http://mailer:9000
+      - CHAT_URL=http://chat:3000
+    depends_on:
+      - mailer
+    profiles:
+      - marketing
+      - all
+    restart: unless-stopped
+
+  journey:
+    image: dittofeed/dittofeed-lite:latest
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://marketing:marketing@marketing-db:5432/journey
+      - CLICKHOUSE_HOST=http://journey-clickhouse:8123
+      - CLICKHOUSE_USER=dittofeed
+      - CLICKHOUSE_PASSWORD=password
+      - TEMPORAL_ADDRESS=journey-temporal:7233
+      - AUTH_MODE=single-tenant
+      - PASSWORD=password
+      - SECRET_KEY=cx330o-journey-secret-key
+      - BOOTSTRAP=true
+      - BOOTSTRAP_SAFE=true
+    depends_on:
+      marketing-db:
+        condition: service_healthy
+      journey-clickhouse:
+        condition: service_started
+      journey-temporal:
+        condition: service_started
+    profiles:
+      - marketing
+      - all
+    restart: unless-stopped
+
+  journey-clickhouse:
+    image: clickhouse/clickhouse-server:24.12-alpine
+    environment:
+      - CLICKHOUSE_USER=dittofeed
+      - CLICKHOUSE_PASSWORD=password
+    volumes:
+      - journey_clickhouse_data:/var/lib/clickhouse
+    profiles:
+      - marketing
+      - all
+    restart: unless-stopped
+
+  journey-temporal:
+    image: temporalio/auto-setup:latest
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=marketing
+      - POSTGRES_PWD=marketing
+      - POSTGRES_SEEDS=marketing-db
+    depends_on:
+      marketing-db:
+        condition: service_healthy
+    profiles:
+      - marketing
+      - all
+    restart: unless-stopped
+
+  mailer:
+    image: listmonk/listmonk:latest
+    command: >
+      sh -c "./listmonk --install --idempotent --yes --config '' &&
+             ./listmonk --upgrade --yes --config '' &&
+             ./listmonk --config ''"
+    environment:
+      - LISTMONK_app__address=0.0.0.0:9000
+      - LISTMONK_db__host=marketing-db
+      - LISTMONK_db__port=5432
+      - LISTMONK_db__user=marketing
+      - LISTMONK_db__password=marketing
+      - LISTMONK_db__database=mailer
+    depends_on:
+      marketing-db:
+        condition: service_healthy
+    profiles:
+      - marketing
+      - all
+    restart: unless-stopped
+
+  chat:
+    image: chatwoot/chatwoot:latest
+    command: bundle exec rails s -b 0.0.0.0 -p 3000
+    environment:
+      - FRONTEND_URL=http://localhost:8080/chat
+      - RAILS_ENV=production
+      - POSTGRES_HOST=marketing-db
+      - POSTGRES_USERNAME=marketing
+      - POSTGRES_PASSWORD=marketing
+      - POSTGRES_DATABASE=chat
+      - REDIS_URL=redis://marketing-redis:6379
+      - SECRET_KEY_BASE=cx330o-chat-secret-base-key-2026
+    depends_on:
+      marketing-db:
+        condition: service_healthy
+      marketing-redis:
+        condition: service_started
+    profiles:
+      - marketing
+      - all
+    restart: unless-stopped
+
+  # ==================== Databases ====================
+
+  infra-db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=infra
+      - POSTGRES_PASSWORD=infra
+    volumes:
+      - infra_pg_data:/var/lib/postgresql/data
+      - ./cx330o-infra/core/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infra"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  crm-db:
+    image: twentycrm/twenty-postgres:latest
+    environment:
+      - POSTGRES_USER=crm
+      - POSTGRES_PASSWORD=crm2026
+      - POSTGRES_DB=default
+    volumes:
+      - crm_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm -d default"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  crm-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  marketing-db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=marketing
+      - POSTGRES_PASSWORD=marketing
+    volumes:
+      - marketing_pg_data:/var/lib/postgresql/data
+      - ./cx330o-marketing/core/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketing"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles:
+      - marketing
+      - all
+    restart: unless-stopped
+
+  marketing-redis:
+    image: redis:7-alpine
+    profiles:
+      - marketing
+      - all
+    restart: unless-stopped
+
+# ==================== Volumes ====================
+volumes:
+  flowengine_data:
+  infra_pg_data:
+  crm_pg_data:
+  marketing_pg_data:
+  journey_clickhouse_data:
+  docuseal_data:
+  contracts_pg_data:
+  hyperswitch_pg_data:
+  growthbook_uploads:
+  growthbook_mongo_data:
