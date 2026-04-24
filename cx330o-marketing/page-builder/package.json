@@ -1,0 +1,20 @@
+{
+  "name": "cx330o-page-builder",
+  "version": "1.0.0",
+  "description": "cx330o 拖拽式 Landing Page 构建器 — GrapesJS 集成",
+  "scripts": {
+    "dev": "next dev -p 3500",
+    "build": "next build",
+    "start": "next start -p 3500"
+  },
+  "dependencies": {
+    "grapesjs": "^0.21.10",
+    "grapesjs-preset-webpage": "^1.0.3",
+    "grapesjs-blocks-basic": "^1.0.2",
+    "grapesjs-plugin-forms": "^2.0.6",
+    "@grapesjs/react": "^1.0.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
